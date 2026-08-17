@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.env
+
+# Node
+node_modules/
+dist/
+npm-debug.log
+
+# Docker
+*.env.*
+
+# AI / model artifacts
+backend_fastapi/hg_model/
+*.safetensors
+*.bin
+*.h5
+*.ot
+
+# Django
+backend_django/backend/settings.py
+backend_django/venv
+
+# VS Code
+.vscode/
+frontend/.angular/cache
+mlruns

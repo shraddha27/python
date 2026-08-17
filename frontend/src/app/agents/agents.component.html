@@ -1,0 +1,23 @@
+<div class="agents-root">
+  <h2>Agents System</h2>
+
+  <div *ngIf="loading()">Loading agents...</div>
+  <div *ngIf="error()" class="error">{{ error() }}</div>
+
+  <div *ngIf="system()">
+    <p><strong>Total agents:</strong> {{ system().total_agents }}</p>
+    <p><strong>Message history size:</strong> {{ system().message_history_size }}</p>
+  </div>
+
+  <div class="agents-list">
+    <h3>Registered Agents</h3>
+    <ul>
+      <li *ngFor="let a of agents()">
+        <strong>{{ a.name }}</strong> ({{ a.role }}) — <em>{{ a.status }}</em>
+        <button (click)="execute(a.agent_id)">Execute list_tasks</button>
+      </li>
+    </ul>
+  </div>
+
+  <button (click)="refresh()">Refresh</button>
+</div>

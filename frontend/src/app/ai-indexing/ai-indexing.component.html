@@ -1,0 +1,130 @@
+<div class="indexing-container">
+  <div class="indexing-header">
+    <h2>📚 Document Indexing</h2>
+    <p>Index tasks as documents for semantic search and AI context retrieval</p>
+  </div>
+
+  <div class="indexing-panel">
+    <!-- Mode Selection -->
+    <div class="mode-selection">
+      <h3>Index Mode</h3>
+      <div class="mode-options">
+        <label class="radio-label">
+          <input
+            type="radio"
+            [ngModel]="indexMode()"
+            (ngModelChange)="indexMode.set($event)"
+            [value]="'all'"
+            name="mode"
+          />
+          <span>Index All Tasks</span>
+        </label>
+        <label class="radio-label">
+          <input
+            type="radio"
+            [ngModel]="indexMode()"
+            (ngModelChange)="indexMode.set($event)"
+            [value]="'selected'"
+            name="mode"
+          />
+          <span>Index Selected Tasks</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Task Selection (if selected mode) -->
+    <div *ngIf="indexMode() === 'selected'" class="task-selection">
+      <h3>Select Tasks to Index</h3>
+
+      <div class="selection-controls">
+        <button (click)="selectAll()" class="control-button select-all">
+          ✓ Select All
+        </button>
+        <button (click)="clearAll()" class="control-button clear-all">
+          ✗ Clear All
+        </button>
+        <span class="selection-count"
+          >{{ selectedTaskIds().length }} selected</span
+        >
+      </div>
+
+      <div *ngIf="tasksLoading()" class="loading">Loading tasks...</div>
+
+      <div *ngIf="!tasksLoading() && allTasks().length > 0" class="task-list">
+        <div *ngFor="let task of displayedTasks" class="task-item">
+          <label class="task-checkbox">
+            <input
+              type="checkbox"
+              [checked]="selectedTaskIds().includes(task.id)"
+              (change)="toggleTask(task.id)"
+            />
+            <div class="task-info">
+              <strong>{{ task.title }}</strong>
+              <small>{{ task.description | slice: 0 : 80 }}</small>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div
+        *ngIf="!tasksLoading() && allTasks().length === 0"
+        class="empty-tasks"
+      >
+        No tasks available. Create tasks first.
+      </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div *ngIf="error()" class="status-message error">❌ {{ error() }}</div>
+
+    <div *ngIf="success()" class="status-message success">
+      ✅ {{ success() }}
+    </div>
+
+    <!-- Action Button -->
+    <div class="action-section">
+      <button
+        (click)="indexDocuments()"
+        [disabled]="
+          loading() ||
+          (indexMode() === 'selected' && selectedTaskIds().length === 0)
+        "
+        class="index-button"
+      >
+        {{ loading() ? "⏳ Indexing..." : "🚀 Index Documents" }}
+      </button>
+      <p class="info-text">
+        {{
+          indexMode() === "all"
+            ? "This will index all tasks in the system."
+            : "This will index " +
+              selectedTaskIds().length +
+              " selected task(s)."
+        }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Info Box -->
+  <div class="info-box">
+    <h3>ℹ️ How Indexing Works</h3>
+    <ul>
+      <li>
+        <strong>Embedding Generation:</strong> Each task is converted to a
+        384-dimensional vector using sentence-transformers
+      </li>
+      <li>
+        <strong>Vector Storage:</strong> Embeddings are stored in Postgres with
+        pgvector extension
+      </li>
+      <li>
+        <strong>Semantic Search:</strong> Later, you can search tasks by
+        meaning, not just keywords
+      </li>
+      <li>
+        <strong>AI Context:</strong> The AI assistant uses indexed documents to
+        answer questions with relevant context
+      </li>
+    </ul>
+  </div>
+</div>

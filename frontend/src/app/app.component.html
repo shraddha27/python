@@ -1,0 +1,42 @@
+<div class="app-shell">
+  <div class="header">
+    <div class="header-left">
+      <h1>{{ title }}</h1>
+    </div>
+    <div class="header-right" *ngIf="authStore.isAuthenticated()">
+      <div *ngIf="authStore.user() as user" class="user-info">
+        <span class="user-name">{{ user.name }}</span>
+        <span class="user-email">{{ user.email }}</span>
+        <span class="user-role" *ngIf="user.roles && user.roles[0]">
+          {{ user.roles[0].name | uppercase }}
+        </span>
+      </div>
+      <button (click)="logout()" class="logout-btn">Logout</button>
+    </div>
+  </div>
+
+  <div class="navigation" *ngIf="authStore.isAuthenticated()">
+    <nav class="nav-menu">
+      <a routerLink="/tasks" routerLinkActive="active" class="nav-link">
+        📋 Tasks
+      </a>
+
+      <ng-container *ngIf="!authStore.isEmployee() || authStore.isAdmin()">
+        <a routerLink="/ai/chat" routerLinkActive="active" class="nav-link">
+          🤖 AI Chat
+        </a>
+        <a routerLink="/ai/search" routerLinkActive="active" class="nav-link">
+          🔍 Vector Search
+        </a>
+        <a routerLink="/ai/index" routerLinkActive="active" class="nav-link">
+          📚 Index Docs
+        </a>
+        <a routerLink="/ai/workflow" routerLinkActive="active" class="nav-link">
+          🔄 LangGraph Workflow
+        </a>
+      </ng-container>
+    </nav>
+  </div>
+
+  <router-outlet></router-outlet>
+</div>

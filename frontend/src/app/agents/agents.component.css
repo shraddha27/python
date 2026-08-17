@@ -1,0 +1,20 @@
+.agents-root {
+  padding: 1rem;
+}
+
+.agents-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.agents-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.error {
+  color: #b00020;
+  margin: 0.5rem 0;
+}
