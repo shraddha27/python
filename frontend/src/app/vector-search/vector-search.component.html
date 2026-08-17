@@ -1,0 +1,85 @@
+<div class="vector-search-container">
+  <div class="search-header">
+    <h2>🔍 Vector Search</h2>
+    <p>Find tasks using semantic similarity</p>
+  </div>
+
+  <div class="search-form">
+    <div class="search-input-group">
+      <input
+        type="text"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        (keydown)="handleKeydown($event)"
+        placeholder="Search tasks semantically..."
+        class="search-input"
+      />
+      <button
+        (click)="search()"
+        [disabled]="loading() || !searchQuery().trim()"
+        class="search-button"
+      >
+        {{ loading() ? "⏳ Searching..." : "🔍 Search" }}
+      </button>
+    </div>
+
+    <div class="search-options">
+      <label>
+        <span>Results per page:</span>
+        <select
+          [ngModel]="limit()"
+          (ngModelChange)="limit.set($event)"
+          class="limit-select"
+        >
+          <option [value]="3">3</option>
+          <option [value]="5">5</option>
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div *ngIf="error()" class="error-message">❌ {{ error() }}</div>
+
+  <div class="results-section" *ngIf="results().length > 0">
+    <h3>Search Results ({{ results().length }})</h3>
+    <div class="results-list">
+      <div *ngFor="let result of results()" class="result-card">
+        <div class="result-header">
+          <h4>{{ result.title }}</h4>
+          <span
+            class="similarity-badge"
+            [style.backgroundColor]="
+              getSimilarityColor(result.similarity_score)
+            "
+          >
+            {{ (result.similarity_score * 100).toFixed(1) }}% match
+          </span>
+        </div>
+        <p class="result-content">{{ result.content }}</p>
+        <div class="result-meta">
+          <span class="doc-id">Doc ID: {{ result.id }}</span>
+          <span *ngIf="result.task_id" class="task-id"
+            >Task ID: {{ result.task_id }}</span
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    *ngIf="!loading() && results().length === 0 && searchQuery()"
+    class="no-results"
+  >
+    No results found. Try a different search query.
+  </div>
+
+  <div
+    *ngIf="!loading() && results().length === 0 && !searchQuery()"
+    class="empty-state"
+  >
+    <p>Enter a search query to find tasks using semantic similarity.</p>
+    <p>Example: "authentication", "bug fixes", "database setup"</p>
+  </div>
+</div>

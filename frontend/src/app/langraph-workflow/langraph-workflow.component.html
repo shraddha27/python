@@ -1,0 +1,60 @@
+<div class="langraph-workflow-container">
+  <div class="chat-shell">
+    <div class="chat-header">
+      <div>
+        <h2>Workflow Assistant</h2>
+        <p>Ask for task actions, workflow execution, and summaries in plain English.</p>
+      </div>
+      <div class="chat-header-actions">
+        <span class="status-pill" *ngIf="mcpStatus">MCP ready</span>
+        <button class="btn-secondary" (click)="clearForm()" [disabled]="loading">Clear</button>
+      </div>
+    </div>
+
+    <div class="chat-messages">
+      <div *ngFor="let message of chatMessages" class="message-row" [ngClass]="message.role">
+        <div class="message-bubble">
+          <div class="message-role">{{ message.role === 'user' ? 'You' : 'Assistant' }}</div>
+          <div class="message-content" *ngIf="message.role === 'user'">{{ message.content }}</div>
+          <div class="message-content" *ngIf="message.role === 'assistant'" [innerHTML]="formatWorkflowResponse(message.content)"></div>
+          <div class="message-meta" *ngIf="message.meta">{{ message.meta }}</div>
+        </div>
+      </div>
+
+      <div *ngIf="loading" class="message-row assistant">
+        <div class="message-bubble typing-bubble">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="error" class="alert alert-error">{{ error }}</div>
+    <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
+
+    <div class="chat-input-panel">
+      <div class="composer-stack">
+        <div class="file-picker-row">
+          <label class="file-picker">
+            <span>📎 Upload file</span>
+            <input type="file" (change)="onFileSelected($event)" />
+          </label>
+          <span class="selected-file" *ngIf="selectedFileName">{{ selectedFileName }}</span>
+        </div>
+        <textarea
+          [(ngModel)]="workflowInput"
+          rows="3"
+          [disabled]="loading"
+          (keydown.enter)="onEnterSend($event)"
+          placeholder="Try: Create tasks from this document or complete all documentation tasks that are pending"
+        ></textarea>
+      </div>
+      <button class="btn-primary" (click)="executeWorkflow()" [disabled]="loading || (!workflowInput.trim() && !selectedFile)">
+        {{ loading ? 'Working...' : 'Send' }}
+      </button>
+    </div>
+  </div>
+</div>

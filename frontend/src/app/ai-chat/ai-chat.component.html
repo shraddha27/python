@@ -1,0 +1,112 @@
+<div class="ai-chat-container">
+  <!-- Header -->
+  <div class="ai-header">
+    <h1>🤖 AI Assistant</h1>
+    <div class="health-status">
+      <div
+        class="status-badge"
+        [class.ready]="aiReady()"
+        [class.error]="!aiReady()"
+      >
+        <span class="status-dot"></span>
+        <span class="status-text">
+          {{ aiReady() ? "AI Ready" : "AI Unavailable" }}
+        </span>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        [checked]="useContext()"
+        (change)="useContext.set($event.target.checked)"
+      />
+      <span>Use Vector Context</span>
+    </label>
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        [checked]="useTools()"
+        (change)="useTools.set($event.target.checked)"
+      />
+      <span>Enable Tool Calling</span>
+    </label>
+  </div>
+
+  <!-- Messages Container -->
+  <div class="messages-container">
+    <div
+      *ngFor="let msg of messages()"
+      class="message"
+      [class]="'message-' + msg.type"
+    >
+      <div class="message-avatar">{{ msg.type === "user" ? "👤" : "🤖" }}</div>
+      <div class="message-content">
+        <div class="message-text">{{ msg.content }}</div>
+
+        <!-- Tool Calls -->
+        <div
+          *ngIf="msg.tool_calls && msg.tool_calls.length > 0"
+          class="tools-section"
+        >
+          <div class="section-title">🔧 Tool Calls:</div>
+          <div *ngFor="let tool of msg.tool_calls" class="tool-call">
+            <div class="tool-header">
+              <strong>{{ tool.name }}</strong>
+              <span class="tool-args">Args: {{ tool.args | json }}</span>
+            </div>
+            <div class="tool-result" *ngIf="tool.result">
+              <pre>{{ tool.result | json }}</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-time">{{ msg.timestamp | date: "HH:mm:ss" }}</div>
+      </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div *ngIf="loading()" class="message message-assistant">
+      <div class="message-avatar">🤖</div>
+      <div class="message-content">
+        <div class="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error()" class="error-message">❌ {{ error() }}</div>
+
+  <!-- Input Area -->
+  <div class="input-area">
+    <textarea
+      class="message-input"
+      [ngModel]="currentMessage()"
+      (ngModelChange)="currentMessage.set($event)"
+      (keydown)="handleKeydown($event)"
+      placeholder="Ask me anything... (Shift+Enter for new line, Enter to send)"
+      [disabled]="loading() || !aiReady()"
+    ></textarea>
+    <button
+      class="send-button"
+      (click)="sendMessage()"
+      [disabled]="loading() || !currentMessage().trim() || !aiReady()"
+    >
+      {{ loading() ? "⏳ Sending..." : "📤 Send" }}
+    </button>
+  </div>
+
+  <!-- Help Text -->
+  <div class="help-text">
+    <strong>💡 Tips:</strong> Try asking to "search for tasks about X", "create
+    a task", or "get task stats"
+  </div>
+</div>

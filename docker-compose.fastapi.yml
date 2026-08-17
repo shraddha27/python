@@ -1,0 +1,82 @@
+services:
+  # PostgreSQL database with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI backend with RAG capabilities
+  backend:
+    build:
+      context: ./backend_fastapi
+      dockerfile: Dockerfile
+    container_name: fastapi_backend
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:root@postgres:5432/postgres
+      - CORS_ALLOWED_ORIGINS=http://localhost:4200
+      - MISTRAL_MODEL=${MISTRAL_MODEL:-mistral-tiny}
+      - MISTRAL_BASE_URL=${MISTRAL_BASE_URL:-https://api.mistral.ai/v1}
+      - MODELS_PATH=${MODELS_PATH:-/models}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-all-MiniLM-L6-v2}
+      - USE_SENTENCE_TRANSFORMERS=true
+      - LOCAL_EMBEDDING_MODEL_PATH=/models/sentence-transformers/all-MiniLM-L6-v2
+      - USE_REMOTE_EMBEDDING_API=false
+      - HF_HUB_DISABLE_SYMLINKS_WARNING=1
+      - HF_HOME=${MODELS_PATH:-/models}/huggingface
+      - TRANSFORMERS_CACHE=${MODELS_PATH:-/models}/huggingface
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-file:./mlruns}
+      - MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME:-task-assistant-ai}
+      - LANGSMITH_TRACING=${LANGSMITH_TRACING:-true}
+      - LANGSMITH_ENDPOINT=${LANGSMITH_ENDPOINT:-https://aws.api.smith.langchain.com}
+      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT:-task}
+    volumes:
+      - D:\models:/models
+    ports:
+      - "8000:8000"
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Angular frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: angular_frontend
+    ports:
+      - "4200:80"
+    networks:
+      - app-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

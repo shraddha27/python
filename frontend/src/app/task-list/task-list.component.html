@@ -1,0 +1,168 @@
+<div class="card">
+  <div class="header-section">
+    <h2>Task Manager</h2>
+    <button
+      type="button"
+      class="stats-btn"
+      (click)="toggleStats()"
+      *ngIf="stats"
+    >
+      📊 Stats
+    </button>
+  </div>
+
+  <!-- Stats Section -->
+  <div *ngIf="showStats && stats" class="stats-panel">
+    <h3>Statistics</h3>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-label">Total:</span>
+        <span class="stat-value">{{ stats.total }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Completed:</span>
+        <span class="stat-value">{{ stats.completed }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Pending:</span>
+        <span class="stat-value">{{ stats.pending }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Progress:</span>
+        <span class="stat-value"
+          >{{ stats.completion_percentage | number: "1.0-0" }}%</span
+        >
+      </div>
+    </div>
+  </div>
+
+  <!-- General Error Alert -->
+  <div *ngIf="generalError" class="alert alert-error">
+    <span>{{ generalError }}</span>
+    <button type="button" class="close-btn" (click)="clearError()">✕</button>
+  </div>
+
+  <!-- Create Task Form (Admin Only) -->
+  <form
+    *ngIf="authStore.isAdmin()"
+    (submit)="createTask(); $event.preventDefault()"
+    class="task-form"
+  >
+    <div class="form-header">
+      <h3>Add New Task</h3>
+    </div>
+    <div class="field">
+      <label>Title <span class="required">*</span></label>
+      <input
+        [(ngModel)]="newTitle"
+        name="title"
+        placeholder="Enter a task title"
+        [class.error]="fieldErrors['title']"
+      />
+      <span *ngIf="fieldErrors['title']" class="error-text">
+        {{ fieldErrors["title"] }}
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Description</label>
+      <textarea
+        [(ngModel)]="newDescription"
+        name="description"
+        placeholder="Optional details"
+        [class.error]="fieldErrors['description']"
+      ></textarea>
+      <span *ngIf="fieldErrors['description']" class="error-text">
+        {{ fieldErrors["description"] }}
+      </span>
+    </div>
+
+    <button type="submit" [disabled]="loading">
+      {{ loading ? "Adding..." : "Add Task" }}
+    </button>
+  </form>
+
+  <!-- Employee Notice -->
+  <div *ngIf="!authStore.isAdmin()" class="employee-notice">
+    <p>You can update task status. Only admins can create new tasks.</p>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <p>Loading tasks…</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && tasks.length === 0" class="empty-state">
+    <p>
+      No tasks yet.
+      {{
+        authStore.isAdmin()
+          ? "Create one above to get started."
+          : "Ask an admin to create a task."
+      }}
+    </p>
+  </div>
+
+  <!-- Task List -->
+  <div class="task-grid" *ngIf="!loading && tasks.length > 0">
+    <article class="task-card" *ngFor="let task of tasks">
+      <div class="task-header">
+        <h3 [class.completed]="task.completed">{{ task.title }}</h3>
+        <div class="task-actions">
+          <button
+            type="button"
+            class="action-btn complete-btn"
+            (click)="toggleCompletion(task)"
+            title="Toggle completion status"
+          >
+            {{ task.completed ? "↩️ Reopen" : "✓ Complete" }}
+          </button>
+          <button
+            *ngIf="authStore.isAdmin()"
+            type="button"
+            class="action-btn delete-btn"
+            (click)="deleteTask(task.id)"
+            title="Delete task (admin only)"
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+      <p class="task-description">
+        {{ task.description || "No description provided." }}
+      </p>
+      <small class="task-date">
+        Created: {{ task.created_at | date: "medium" }}
+      </small>
+    </article>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination" *ngIf="!loading && tasks.length > 0">
+    <div class="pagination-info">
+      Showing {{ startIndex }}-{{ endIndex }} of {{ totalTasks }} tasks
+    </div>
+    <div class="pagination-controls">
+      <button
+        type="button"
+        class="pagination-btn"
+        (click)="previousPage()"
+        [disabled]="currentPage === 0"
+      >
+        ← Previous
+      </button>
+      <span class="page-indicator">
+        Page {{ currentPage + 1 }} of {{ pageCount }}
+      </span>
+      <button
+        type="button"
+        class="pagination-btn"
+        (click)="nextPage()"
+        [disabled]="!hasMore"
+      >
+        Next →
+      </button>
+    </div>
+  </div>
+</div>
