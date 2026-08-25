@@ -26,6 +26,6 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD-SHELL python -c "import os, requests; requests.get('http://127.0.0.1:' + os.getenv('PORT', '8000') + '/docs', timeout=5)"
+    CMD python -c "import os, requests; requests.get('http://127.0.0.1:' + os.getenv('PORT', '8000') + '/docs', timeout=5)"
 
 CMD ["sh", "-c", "uvicorn backend_fastapi.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
