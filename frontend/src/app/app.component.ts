@@ -3,7 +3,6 @@ import { Router, RouterModule } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { AuthStore } from "./store/auth.signal-store";
 import { AppService } from "./app.service";
-import { CsrfService } from "./csrf.service";
 
 @Component({
   selector: "app-root",
@@ -16,12 +15,8 @@ export class AppComponent implements OnInit {
   authStore = inject(AuthStore) as any;
   private readonly appService = inject(AppService);
   private readonly router = inject(Router);
-  private readonly csrfService = inject(CsrfService);
 
   ngOnInit(): void {
-    // Initialize CSRF token
-    this.csrfService.getToken().subscribe();
-
     // Initialize auth state from localStorage
     this.authStore.initializeFromStorage();
 

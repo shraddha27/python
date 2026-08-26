@@ -9,7 +9,6 @@ import { TaskListComponent } from "./task-list/task-list.component";
 import { HttpErrorInterceptor } from "./http-error.interceptor";
 import { LoginComponent } from "./login/login.component";
 import { AuthInterceptor } from "./auth.interceptor";
-import { CsrfInterceptor } from "./csrf.interceptor";
 import { AuthGuard } from "./auth.guard";
 import { AiChatComponent } from "./ai-chat/ai-chat.component";
 import { VectorSearchComponent } from "./vector-search/vector-search.component";
@@ -60,11 +59,6 @@ const routes: Routes = [
       provide: APP_INITIALIZER,
       useFactory: initializeAuth,
       deps: [AuthStore],
-      multi: true,
-    },
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: CsrfInterceptor,
       multi: true,
     },
     {
