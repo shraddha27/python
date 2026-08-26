@@ -244,6 +244,51 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
             return None
         return {"title": title[:120], "description": description[:1000]}
 
+    def _parse_markdown_task_table(lines: List[str]) -> List[Dict[str, str]]:
+        """Parse task tables without allowing the LLM to change column meaning."""
+        header_index = -1
+        header_cells: List[str] = []
+        for index, line in enumerate(lines):
+            if "|" not in line:
+                continue
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            normalized = [re.sub(r"\s+", " ", cell).lower() for cell in cells]
+            if "task name" in normalized and "description" in normalized:
+                header_index = index
+                header_cells = normalized
+                break
+
+        if header_index < 0:
+            return []
+
+        title_index = header_cells.index("task name")
+        description_index = header_cells.index("description")
+        assigned_index = header_cells.index("assigned to") if "assigned to" in header_cells else -1
+        deadline_index = header_cells.index("deadline") if "deadline" in header_cells else -1
+        tasks: List[Dict[str, str]] = []
+
+        for line in lines[header_index + 1:]:
+            if "|" not in line:
+                continue
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if not cells or all(re.fullmatch(r":?-{2,}:?", cell) for cell in cells):
+                continue
+            if max(title_index, description_index, assigned_index, deadline_index) >= len(cells):
+                continue
+
+            title = _clean_field(cells[title_index], "title")
+            if not _is_valid_task_title(title):
+                continue
+            description_parts = [_clean_field(cells[description_index], "description")]
+            if assigned_index >= 0 and cells[assigned_index]:
+                description_parts.append(f"Assigned To: {_clean_field(cells[assigned_index])}")
+            if deadline_index >= 0 and cells[deadline_index]:
+                description_parts.append(f"Deadline: {_clean_field(cells[deadline_index])}")
+            description = " | ".join(part for part in description_parts if part)
+            tasks.append({"title": title[:120], "description": description[:1000] or title})
+
+        return tasks
+
     def _line_has_table_fields(line: str) -> bool:
         return bool(re.search(r"\b(task id|assigned to|deadline|description|task name)\b", line, re.IGNORECASE))
 
@@ -379,6 +424,10 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
                 else:
                     rows.append([segment])
         return rows
+
+    table_tasks = _parse_markdown_task_table(cleaned_lines)
+    if table_tasks:
+        return table_tasks
 
     prompt = (
         "You are an OCR text cleaner and task extractor. "
