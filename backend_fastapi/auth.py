@@ -116,9 +116,9 @@ def verify_google_token(id_token_str: str) -> dict:
 
 
 @auth_router.post("/google/", response_model=TokenResponse)
-def google_login(request: GoogleLoginRequest, response: Response, db: Session = Depends(get_db)):
+def google_login(login_request: GoogleLoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     try:
-        decoded = verify_google_token(request.id_token)
+        decoded = verify_google_token(login_request.id_token)
         google_id = decoded.get("sub")
         email = decoded.get("email")
         name = decoded.get("name", email.split("@")[0] if email else "User")
@@ -157,13 +157,13 @@ def google_login(request: GoogleLoginRequest, response: Response, db: Session = 
             key=AUTH_COOKIE_NAME,
             value=access_token,
             httponly=True,
-            secure=False,
-            samesite="lax",
+            secure=request.url.scheme == "https",
+            samesite="none" if request.url.scheme == "https" else "lax",
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             path="/",
         )
         return TokenResponse(
-            access_token="",
+            access_token=access_token,
             token_type="bearer",
             user=UserSchema(id=user.id, email=user.email, name=user.name, roles=roles_list),
         )

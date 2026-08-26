@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Observable, throwError } from "rxjs";
-import { catchError, map } from "rxjs/operators";
+import { catchError, map, timeout } from "rxjs/operators";
 import { environment } from "../environments/environment";
 import { Task } from "./task.model";
 import { ApiError, ApiResponse, TaskStats } from "./error.model";
@@ -22,6 +22,7 @@ export class AppService {
   googleLogin(idToken: string): Observable<any> {
     return this.http
       .post<any>(`${this.authUrl}google/`, { id_token: idToken })
+      .pipe(timeout(30000))
       .pipe(catchError(this.handleError));
   }
 

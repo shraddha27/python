@@ -90,6 +90,9 @@ export class LoginComponent implements OnInit, AfterViewInit {
     this.appService.googleLogin(idToken).subscribe({
       next: (loginResponse: any) => {
         this.authStore.user.set(loginResponse.user);
+        if (loginResponse.access_token) {
+          this.appService.setAuthToken(loginResponse.access_token);
+        }
         localStorage.setItem("auth_user", JSON.stringify(loginResponse.user));
         localStorage.setItem("user_loaded", "true");
         this.loading.set(false);
@@ -98,7 +101,7 @@ export class LoginComponent implements OnInit, AfterViewInit {
       error: (error: any) => {
         console.error("✗ Google Login Error:", error);
         this.loading.set(false);
-        this.error.set(error.message || "Login failed");
+        this.error.set(error.detail || error.message || "Login failed");
       },
     });
   }
