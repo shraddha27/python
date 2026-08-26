@@ -24,11 +24,14 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 EMBEDDING_DIMENSION = 384
 MODELS_PATH = os.getenv("MODELS_PATH", "/models")
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+EMBEDDING_MODEL_NAME = os.getenv(
+    "EMBEDDING_MODEL_NAME",
+    "BAAI/bge-small-en-v1.5",
+)
 HF_EMBEDDING_API_TOKEN = os.getenv("HF_EMBEDDING_API_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_API_TOKEN")
 HF_EMBEDDING_API_URL = os.getenv(
     "HF_EMBEDDING_API_URL",
-    "https://api-inference.huggingface.co/models",
+    "https://router.huggingface.co/hf-inference/models",
 ).rstrip("/")
 LOCAL_EMBEDDING_MODEL_PATH = os.getenv(
     "LOCAL_EMBEDDING_MODEL_PATH",
@@ -269,7 +272,7 @@ def _remote_sentence_embedding(text: str) -> Optional[List[float]]:
                 "Authorization": f"Bearer {HF_EMBEDDING_API_TOKEN}",
                 "Content-Type": "application/json",
             },
-            json={"inputs": prompt, "truncate": True},
+            json={"inputs": prompt, "normalize": True, "truncate": True},
             timeout=45,
         )
         response.raise_for_status()

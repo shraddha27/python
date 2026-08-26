@@ -1,5 +1,6 @@
 import traceback
 import logging
+import os
 from typing import Optional
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -29,6 +30,27 @@ from backend_fastapi.mlflow_tracking import MLflowTracker, log_artifact_json
 from backend_fastapi.langsmith_tracing import is_langsmith_enabled
 
 logger = logging.getLogger(__name__)
+
+REINDEX_DOCUMENT_EMBEDDINGS_ON_STARTUP = os.getenv(
+    "REINDEX_DOCUMENT_EMBEDDINGS_ON_STARTUP",
+    "false",
+).lower() not in {"0", "false", "no", "off"}
+
+
+def _reindex_document_embeddings() -> None:
+    """Refresh stored vectors after changing the embedding model."""
+    db = SessionLocal()
+    try:
+        documents = db.query(DocumentModel).all()
+        for document in documents:
+            document.embedding = generate_embedding(document.content)
+        db.commit()
+        logger.info("Reindexed %s document embeddings", len(documents))
+    except Exception:
+        db.rollback()
+        logger.exception("Document embedding reindex failed")
+    finally:
+        db.close()
 
 
 def startup_event():
@@ -83,6 +105,9 @@ def startup_event():
     finally:
         db.close()
 
+    if REINDEX_DOCUMENT_EMBEDDINGS_ON_STARTUP:
+        _reindex_document_embeddings()
+
     try:
         agent_manager = AgentManager()
         agent_manager.register_agent(TaskAgent())
@@ -135,7 +160,7 @@ def startup_event():
             finally:
                 db.close()
 
-        async def vector_search_handler(query: str, limit: int = 5, threshold: float = 0.7):
+        async def vector_search_handler(query: str, limit: int = 5, threshold: float = 0.08):
             db = SessionLocal()
             try:
                 query_embedding = generate_embedding(query)

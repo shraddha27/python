@@ -36,10 +36,12 @@ services:
       - MISTRAL_MODEL=${MISTRAL_MODEL:-mistral-tiny}
       - MISTRAL_BASE_URL=${MISTRAL_BASE_URL:-https://api.mistral.ai/v1}
       - MODELS_PATH=${MODELS_PATH:-/models}
-      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-all-MiniLM-L6-v2}
-      - USE_SENTENCE_TRANSFORMERS=true
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-BAAI/bge-small-en-v1.5}
+      - HF_EMBEDDING_API_URL=${HF_EMBEDDING_API_URL:-https://router.huggingface.co/hf-inference/models}
+      - USE_SENTENCE_TRANSFORMERS=false
       - LOCAL_EMBEDDING_MODEL_PATH=/models/sentence-transformers/all-MiniLM-L6-v2
-      - USE_REMOTE_EMBEDDING_API=false
+      - USE_REMOTE_EMBEDDING_API=true
+      - REINDEX_DOCUMENT_EMBEDDINGS_ON_STARTUP=${REINDEX_DOCUMENT_EMBEDDINGS_ON_STARTUP:-false}
       - HF_HUB_DISABLE_SYMLINKS_WARNING=1
       - HF_HOME=${MODELS_PATH:-/models}/huggingface
       - TRANSFORMERS_CACHE=${MODELS_PATH:-/models}/huggingface

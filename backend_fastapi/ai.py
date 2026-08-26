@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 import os
 import re
@@ -34,7 +35,14 @@ from backend_fastapi.search import (
     sync_task_document,
     vector_search,
 )
-from backend_fastapi.mistral_client import check_ollama_health, chat_with_tools, generate_response
+from backend_fastapi.mistral_client import (
+    MISTRAL_API_KEY,
+    MISTRAL_BASE_URL,
+    VERIFY_SSL,
+    check_ollama_health,
+    chat_with_tools,
+    generate_response,
+)
 import backend_fastapi.state as state
 from backend_fastapi.mlflow_tracking import MLflowTracker, track_vector_search, track_workflow_execution
 from backend_fastapi.langsmith_tracing import trace_workflow_execution, trace_llm_call
@@ -100,10 +108,32 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
         return True
 
     def _strip_label(text: str) -> str:
-        return re.sub(r"^(title|description)\s*:\s*", "", text, flags=re.IGNORECASE).strip()
+        cleaned = re.sub(r"^#+\s*", "", str(text or "").strip())
+        cleaned = re.sub(r"^['\"]?(title|description)['\"]?\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+        cleaned = cleaned.strip(" ,")
+        if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {'\"', "'"}:
+            cleaned = cleaned[1:-1].strip()
+        return cleaned.strip(" `\t")
 
     def _strip_description_label(text: str) -> str:
-        return re.sub(r"^(description|desc)\s*:\s*", "", text, flags=re.IGNORECASE).strip()
+        return _strip_label(re.sub(r"^(description|desc)\s*:\s*", "", str(text or ""), flags=re.IGNORECASE))
+
+    def _clean_field(text: str, field_name: str = "") -> str:
+        """Remove OCR/LLM formatting from a task field while preserving its text."""
+        cleaned = str(text or "").strip()
+        cleaned = re.sub(r"^#+\s*", "", cleaned)
+        if field_name:
+            cleaned = re.sub(
+                rf"^['\"]?{field_name}['\"]?\s*:\s*",
+                "",
+                cleaned,
+                flags=re.IGNORECASE,
+            ).strip()
+        cleaned = re.sub(r"^(title|description|desc)\s*:\s*", "", cleaned, flags=re.IGNORECASE).strip()
+        cleaned = cleaned.strip(" ,")
+        if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {'\"', "'"}:
+            cleaned = cleaned[1:-1].strip()
+        return cleaned.strip(" `\t")
 
     def _description_from_entry(entry: Dict[str, Any], title: str = "") -> str:
         description_fields: List[str] = []
@@ -379,8 +409,8 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
                         for entry in parsed:
                             if not isinstance(entry, dict):
                                 continue
-                            title = str(entry.get("title") or "").strip()
-                            description = _strip_description_label(str(entry.get("description") or "").strip())
+                            title = _clean_field(str(entry.get("title") or ""), "title")
+                            description = _clean_field(str(entry.get("description") or ""), "description")
                             if title and not description:
                                 description = _description_from_entry(entry, title=title)
                             if title:
@@ -388,8 +418,8 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
                         if tasks:
                             return tasks
                     elif isinstance(parsed, dict):
-                        title = str(parsed.get("title") or "").strip()
-                        description = _strip_description_label(str(parsed.get("description") or "").strip())
+                        title = _clean_field(str(parsed.get("title") or ""), "title")
+                        description = _clean_field(str(parsed.get("description") or ""), "description")
                         if title and not description:
                             description = _description_from_entry(parsed, title=title)
                         if title:
@@ -410,8 +440,8 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
                             for entry in parsed:
                                 if not isinstance(entry, dict):
                                     continue
-                                title = str(entry.get("title") or "").strip()
-                                description = _strip_description_label(str(entry.get("description") or "").strip())
+                                title = _clean_field(str(entry.get("title") or ""), "title")
+                                description = _clean_field(str(entry.get("description") or ""), "description")
                                 if title and not description:
                                     description = _description_from_entry(entry, title=title)
                                 if title:
@@ -419,8 +449,8 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
                             if tasks:
                                 return tasks
                         elif isinstance(parsed, dict):
-                            title = str(parsed.get("title") or "").strip()
-                            description = _strip_description_label(str(parsed.get("description") or "").strip())
+                            title = _clean_field(str(parsed.get("title") or ""), "title")
+                            description = _clean_field(str(parsed.get("description") or ""), "description")
                             if title and not description:
                                 description = _description_from_entry(parsed, title=title)
                             if title:
@@ -490,6 +520,58 @@ def _parse_tasks_from_ocr_text(ocr_text: str, user_prompt: str) -> List[Dict[str
         tasks.append({"title": "Extracted task", "description": user_prompt or cleaned[:500]})
 
     return tasks
+
+
+def _mistral_ocr_file(file_path: str, suffix: str) -> str:
+    """Extract text from a PDF or image using Mistral OCR."""
+    if not MISTRAL_API_KEY:
+        return ""
+
+    try:
+        import requests
+
+        with open(file_path, "rb") as input_file:
+            encoded_file = base64.b64encode(input_file.read()).decode("ascii")
+
+        is_pdf = suffix.lower() == ".pdf"
+        mime_type = "application/pdf" if is_pdf else {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".bmp": "image/bmp",
+            ".tif": "image/tiff",
+            ".tiff": "image/tiff",
+        }.get(suffix.lower(), "application/octet-stream")
+        document_type = "document_url" if is_pdf else "image_url"
+        document_url = f"data:{mime_type};base64,{encoded_file}"
+
+        response = requests.post(
+            f"{MISTRAL_BASE_URL}/ocr",
+            headers={
+                "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "mistral-ocr-latest",
+                "document": {
+                    "type": document_type,
+                    document_type: document_url,
+                },
+            },
+            timeout=90,
+            verify=VERIFY_SSL,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        pages = payload.get("pages", [])
+        return "\n\n".join(
+            page.get("markdown", "")
+            for page in pages
+            if isinstance(page, dict) and page.get("markdown")
+        ).strip()
+    except Exception as exc:
+        logger.warning("Mistral OCR failed: %s", exc)
+        return ""
 
 
 def _format_verified_task_response(tool_calls: List[dict]) -> Optional[str]:
@@ -837,9 +919,9 @@ async def upload_workflow_file(
         if suffix in {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".pdf"}:
             try:
                 from PIL import Image
-                import easyocr
             except Exception as exc:
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"OCR dependencies unavailable: {exc}")
+                if suffix != ".pdf":
+                    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Image OCR dependencies unavailable: {exc}")
 
             ocr_text = ""
             if suffix == ".pdf":
@@ -857,7 +939,12 @@ async def upload_workflow_file(
                     extraction_note = "PDF text extraction failed; attempting OCR"
                     ocr_text = ""
             if not ocr_text:
+                ocr_text = _mistral_ocr_file(tmp_path, suffix)
+                if ocr_text:
+                    extraction_note = "OCR extracted text using Mistral OCR"
+            if not ocr_text:
                 try:
+                    import easyocr
                     import cv2
                     import numpy as np
                     import ssl
@@ -923,7 +1010,7 @@ async def upload_workflow_file(
                         
                 except ImportError as exc:
                     logger.error(f"EasyOCR or dependencies not installed: {exc}")
-                    extraction_note = f"OCR library error: {exc}"
+                    extraction_note = "OCR unavailable in this PyTorch-free deployment"
                     ocr_text = ""
                 except Exception as exc:
                     logger.error(f"EasyOCR processing failed: {type(exc).__name__}: {exc}", exc_info=True)

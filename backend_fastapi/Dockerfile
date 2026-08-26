@@ -8,15 +8,19 @@ ENV EASYOCR_HOME=/app/.easyocr
 
 WORKDIR /app
 
-# Install system dependencies required for OCR and image processing
+# Install the application dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libsm6 libxext6 libxrender-dev libgomp1 ca-certificates \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
+
+# Use remote embeddings and Mistral OCR without the local PyTorch model stack.
+ENV USE_SENTENCE_TRANSFORMERS=false
+ENV USE_REMOTE_EMBEDDING_API=true
 
 # Copy application code into a package directory so imports like
 # `from backend_fastapi.*` resolve correctly when running from /app.

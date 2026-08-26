@@ -878,7 +878,16 @@ def _rank_tasks_semantically(query: str, tasks, db, desired_status: Optional[str
         minimum_score = 0.0
 
     if not wants_completed:
-        ranked = [item for item in ranked if item["similarity_score"] >= minimum_score]
+        keyword_terms = _normalize_search_terms(normalize_task_search_query(query_text))
+        ranked = [
+            item
+            for item in ranked
+            if item["similarity_score"] >= minimum_score
+            or any(
+                term in f"{item.get('title', '')} {item.get('description', '')}".lower()
+                for term in keyword_terms
+            )
+        ]
     return ranked
 
 
