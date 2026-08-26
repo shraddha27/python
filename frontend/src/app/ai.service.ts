@@ -2,6 +2,7 @@ import { Injectable } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { map, mergeMap } from 'rxjs/operators';
+import { environment } from "../environments/environment";
 
 export interface ChatRequest {
   message: string;
@@ -117,10 +118,10 @@ export interface MCPStatus {
   providedIn: "root",
 })
 export class AiService {
-  private readonly API_BASE = "/api/ai";
-  private readonly AGENTS_BASE = "/api/agents";
-  private readonly WORKFLOW_BASE = "/api/workflow";
-  private readonly MCP_BASE = "/api/mcp";
+  private readonly API_BASE = `${environment.apiUrl}/ai`;
+  private readonly AGENTS_BASE = `${environment.apiUrl}/agents`;
+  private readonly WORKFLOW_BASE = `${environment.apiUrl}/workflow`;
+  private readonly MCP_BASE = `${environment.apiUrl}/mcp`;
 
   constructor(private http: HttpClient) {}
 
